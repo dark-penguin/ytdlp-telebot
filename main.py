@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import telebot
 from yt_dlp import YoutubeDL, utils
 
-# import json  # For debug dumpung a part of the json info
+import json  # For debug dumpung a part of the json info
 
 
 load_dotenv()  # Load envvars from .env
@@ -21,15 +21,17 @@ regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
 tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-bot-downloading')  # Amend for Windows?..
 resultdir = os.environ.get('RESULTDIR', '/tmp/ytdlp-bot-done')
 
-options = {'format': 'ba + bv[height<=800] '
-                     '/ ba + bv[width<=800] '  # For vertical videos, it's width, not height!
-                     '/ best[height<=800] '
-                     '/ best[width<=800]',
-           'format_sort': ['codec:h265:h264:h263'],
+default_formats = ('  ba + bv[height<=800] '
+                   '/ ba + bv[width<=800] '  # For vertical videos, it's width, not height!
+                   '/    best[height<=800] '
+                   '/    best[width<=800]')
+
+options = {'format_sort': ['codec:h265:h264:h263'],
            'max_filesize': 52428800,  # 50 MB - Telegram's limit for bots; abort if larger
            'subtitleslangs': ['en'],
            'writesubtitles': True,
            # 'progress_hooks': [progress],  # A function to call back!..
+           # 'verbose': True,  # They require it for bug reporting
 
            'paths': {'temp': tempdir, 'home': resultdir},  # Autocreated!
            'concurrent_fragment_downloads': 10,
@@ -49,9 +51,10 @@ options = {'format': 'ba + bv[height<=800] '
                               ],
 
            # Options set by default for the commandline (but not for the API!)
-           # 'extract_flat': True,  # Get only top-level info (do not go into resolving playlists/URLs)
+           # 'extract_flat': True,  # Get only top-level info (do not go into resolving playlists/redirects)
+           # 'extract_flat': 'in_playlist',  # Do not process for playlists!
            # This has to stay off, because otherwise it just reports "oh, it's an URL redirect somewhere"!
-           # 'ignoreerrors': 'only_download',  # False  # Does not seem to do anything!
+           # 'ignoreerrors': 'only_download',  # CLI default: 'only_download', API default: False
            'retries': 10,
            'fragment_retries': 10,
            }
@@ -60,10 +63,13 @@ proxy = os.environ.get('PROXY', None)
 if proxy:
     options.update({'proxy': proxy})
 
+formats = os.environ.get('FORMATS', default_formats)
+options.update({'format': formats})
+
 try:
     bot = telebot.TeleBot(token)
-except Exception as fuck:
-    print(f"Failed to register the bot!\n{fuck}")
+except Exception as err:
+    print(f"Failed to register the bot!\n{err}")
     exit(1)
 
 
@@ -79,13 +85,6 @@ def send_welcome(message):
                           "and if they contain any videos, I try to download and post them.")
 
 
-# @bot.message_handler(func=lambda message: True)
-# def echo_all(message):
-#     bot.reply_to(message, message.text)
-#     bot.delete_message(message.chat.id, message.id)
-
-
-# @bot.message_handler(func=lambda message: re.match(r'https?://', message))
 @bot.message_handler(func=lambda message: True)  # Just check all messages!
 def check_message(message):
     matches = re.findall(regex, message.text)
@@ -96,38 +95,36 @@ def check_message(message):
         timestamp = f"{datetime.now():%Y-%m-%d_%H:%M:%S}"  # 2024-12-27 14:30:15
         filename = f'{timestamp}.%(ext)s'
 
-        # Quick check if this is a playlist to give the error sooner
-        with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True)) as ydl:
-            try:
+        try:
+            # Quick check if this is a playlist to give the error sooner
+            with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True, listformats=True)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-            except utils.DownloadError as shit:
-                # No need to warn about non-video links
-                # No need to print either, because it's logged already!
-                # print(f"{shit}\n{url}")
-                continue
-            except Exception as shit:
-                log(f"{shit}\n{url}")
-                continue
 
+            # If this is a playlist, abort quietly
             if info.get('entries') or (info.get('_type') == "playlist"):
-                # log(f"Playlist\n{url}")
-                bot.reply_to(message, f"😾 Suck me off, that's a playlist!\n{url}")
                 continue
 
-        # Try to download it (I wonder if it could still be a playlist behind an URL redirect...)
-        with YoutubeDL(dict(options, outtmpl=filename)) as ydl:
-            try:
+            # Try to download it (I wonder if it could still be a playlist behind an URL redirect...)
+            with YoutubeDL(dict(options, outtmpl=filename)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=True))
-            except utils.DownloadError as shit:
-                # No need to warn about non-video links
-                # No need to print either, because it's logged already!
-                # print(f"{shit}\n{url}")
-                continue
-            except Exception as shit:
-                log(f"{shit}\n{url}")
-                continue
 
-        # DEBUG: (you'll need to import json for this)
+        except utils.DownloadError as error:  # Note that you can't handle errors "normally"!
+            # Check for UnsupportedError first, because it is also an ExtractorError!
+            if isinstance(error.exc_info[1], utils.UnsupportedError):
+                continue
+            # Check this with "elif", or continue, because otherwise both will match!
+            elif isinstance(error.exc_info[1], utils.ExtractorError):
+                # We'd like to see what formats are available
+                # TODO: The output is too large for Telegram - should process it first!
+                # TODO: DEBUG - how the fuck do I process this JSON?..
+                with open("/tmpfs/test.log", 'w') as file:
+                    json.dump(info.get('formats'), file, indent=4)
+                log(f"{error}\n\n{type(error.exc_info[1])}\n\nFormats available: <WIP>\n\n{url}")
+                continue
+            log(f"{error}\n\n{type(error.exc_info[1])}\n\n{url}")
+            continue
+
+        # DEBUG: dump 'info' into a file (you'll need to import json for this)
         # with open("/tmpfs/full.log", 'w') as file:
         #     json.dump(info, file, indent=4)
         # with open("/tmpfs/test.log", 'w') as file:
@@ -136,22 +133,23 @@ def check_message(message):
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
         if len(filenames) != 1:
-            log(f"WHAT THE FUCK! Got {len(filenames)} downloaded files!\n{url}")
+            log(f"WARNING! Got {len(filenames)} downloaded files for some reason!\n{url}")
         filename = filenames[0].get('filepath')
 
         # Check that we're going to delete a normal file
         if not os.path.isfile(filename):
-            log(f"WHAT THE FUCK! File does not exist (or is not a file): {filename}\n{url}")
+            log(f"WARNING! File does not exist (or is not a file): {filename}\n{url}")
 
         with open(filename, 'rb') as file:
             try:
+                # TODO: delete the original message, repost its contents under the URL and the sender name
                 bot.send_video(message.chat.id, file, caption=url)
                 os.remove(filename)
-            except Exception as shit:
-                log(f"{shit}\n{url}")
+            except Exception as error:
+                log(f"{error}\n{url}")
 
 
-def stop(sig, frame):
+def stop(sig, _):
     print(f"Caught {signal.Signals(sig).name}, exiting gracefully...")
     bot.stop_bot()
     exit(0)

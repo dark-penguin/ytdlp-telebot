@@ -11,3 +11,25 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 #RESULTDIR="/tmp/ytdlp-bot-done"
 #REGEX='\bhttps?://\S*\b'
 #PROXY="192.168.0.1:8080"
+
+# - Separate video+audio, up to 1280x720 or vertical 720x1280
+# - Single file, same resolution
+# - Anything that's available of lower resolution
+# - And all the same things in case the site does not expose sizes properly
+FORMATS="
+ ba + bv[width>=800][height<=800][filesize<50M]
+/ba + bv[width<=800][height>=800][filesize<50M]
+/   best[width>=800][height<=800][filesize<50M]
+/   best[width<=800][height>=800][filesize<50M]
+
+/ba + bv[width<=800][height<=800][filesize<50M]
+/   best[width<=800][height<=800][filesize<50M]
+
+/ba + bv[width>=800][height<=800]
+/ba + bv[width<=800][height>=800]
+/   best[width>=800][height<=800]
+/   best[width<=800][height>=800]
+
+/ba + bv[width<=800][height<=800]
+/   best[width<=800][height<=800]
+"
