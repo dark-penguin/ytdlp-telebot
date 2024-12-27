@@ -1,0 +1,17 @@
+[Unit]
+Description=ytdlp-telebot
+Requires=docker.service
+After=docker.service
+
+
+[Service]
+Type=simple
+Restart=on-failure
+
+ExecStart=/usr/bin/docker run -t --rm --name ytdlp ytdlp
+ExecStop=/usr/bin/docker stop ytdlp
+ExecStopPost=/bin/bash -c 'while true; do [ -z "$(docker ps -a | awk "{print \$NF;}" | tail -n +2 | grep "^ytdlp$")" ] && break; sleep 1; done'
+
+
+[Install]
+WantedBy=multi-user.target

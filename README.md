@@ -36,3 +36,9 @@ python3 main.py
 the rest are optional, in case you want to override the defaults)
 - Simply launch `docker-redeploy.sh`. It will [re]build the container,
 stop the old one if it's already running, and launch the new one.
+- If you want it installed as a service, install the service file:
+```bash
+sudo cp ytdlp.service /etc/systemd/system/
+sudo systemctl enable ytdlp  # To be started at system boot
+sudo systemctl start ytdlp  # To start it now
+```

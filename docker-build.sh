@@ -6,11 +6,7 @@ FROM="debian:bullseye"
 CMD="cd '$APPNAME' && python3 'main.py'"  # Launched with Bash
 
 error() { echo "ERROR: $1"; exit "${2:-1}"; }
-usage() { echo -e "\nERROR: $1\n\nUSAGE: $0 <tag>" >&2; exit 1; }
 
-# Check arguments
-[ -z "$1" ] && usage "Not enough arguments!"
-[ -n "$2" ] && usage "Too many arguments!"
 [ "$(whoami)" == "root" ] && error "NEVER run production stuff as root!!"
 
 
@@ -19,7 +15,6 @@ USER_NAME="$(whoami)"
 USER_ID="$(id -u)"
 GROUP_ID="$(id -g)"
 
-TAG="$1"
 BUILDDIR="/tmp/docker-build-$APPNAME-$(date '+%H%M%S')"  # Two builds within the same second are not allowed
 
 
@@ -74,7 +69,7 @@ EOF
 
 
 echo -e "\n=== Building...\n"
-docker build --progress=plain -t "$TAG" . # || error "Build failed!" 2  # No use - https://github.com/moby/moby/issues/1150
+docker build --progress=plain -t "$APPNAME" . # || error "Build failed!" 2  # No use - https://github.com/moby/moby/issues/1150
 echo -e "\n=== Cleaning up the directory...\n"
 #docker image prune -f
 echo -e "\n=== Done\n"
