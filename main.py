@@ -56,6 +56,10 @@ options = {'format': 'ba + bv[height<=800][filesize<50M] '  # Choose a <50M one
            'fragment_retries': 10,
            }
 
+proxy = os.environ.get('PROXY', None)
+if proxy:
+    options.update({'proxy': proxy})
+
 try:
     bot = telebot.TeleBot(token)
 except Exception as fuck:

@@ -19,6 +19,10 @@ If no such format is detected, then the download attempt is considered a failure
 Not tested. It would probably be enough to adjust paths in your .env file.
 
 ### Level 2: Linux
+You might have some trouble installing Python packages from pip
+unless you already have it set up and/or know how to use virtualenv.
+Explaining how to set up Python is out of scope, so consider using Docker instead. 
+
 - Clone the project
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
 - Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,
@@ -30,6 +34,9 @@ python3 main.py
 ```
 
 ### Level 3: Docker
+Naturally, you must have Docker installed and working, but this is as simple as
+installing a package and adding yourself to the `docker` group.
+
 - Clone the project
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
 - Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,

@@ -10,3 +10,4 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 #TEMPDIR="/tmp/ytdlp-bot-downloading"
 #RESULTDIR="/tmp/ytdlp-bot-done"
 #REGEX='\bhttps?://\S*\b'
+#PROXY="192.168.0.1:8080"
