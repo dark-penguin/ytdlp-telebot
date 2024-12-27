@@ -21,10 +21,10 @@ regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
 tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-bot-downloading')  # Amend for Windows?..
 resultdir = os.environ.get('RESULTDIR', '/tmp/ytdlp-bot-done')
 
-options = {'format': 'ba + bv[height<=800][filesize<50M] '  # Choose a <50M one
-                     '/ ba + bv[width<=800][filesize<50M] '  # For vertical videos, it's width, not height!
-                     '/ best[height<=800][filesize<50M] '
-                     '/ best[width<=800][filesize<50M]',
+options = {'format': 'ba + bv[height<=800] '
+                     '/ ba + bv[width<=800] '  # For vertical videos, it's width, not height!
+                     '/ best[height<=800] '
+                     '/ best[width<=800]',
            'format_sort': ['codec:h265:h264:h263'],
            'max_filesize': 52428800,  # 50 MB - Telegram's limit for bots; abort if larger
            'subtitleslangs': ['en'],
