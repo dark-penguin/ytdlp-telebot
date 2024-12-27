@@ -1,0 +1,17 @@
+# Editor settings and virtualenv
+.idea
+venv
+
+# Things that setup.py produces
+/*.egg-info
+.eggs
+
+# Things that PyInstaller produces
+*.spec
+/build/
+/dist/
+__pycache__
+
+*.py[cod]
+
+.env

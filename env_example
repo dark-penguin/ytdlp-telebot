@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# Copy this file to '.env' and set your values
+
+# Mandatory
+TOKEN=""  # Get it from BotFather t.me/BotFather
+
+# Optional
+#LOG_CHANNEL="-100xxxxxxxxxx"
+#TEMPDIR="/tmp/ytdlp-bot-downloading"
+#RESULTDIR="/tmp/ytdlp-bot-done"
+#REGEX='\bhttps?://\S*\b'
