@@ -2,9 +2,7 @@ import os
 import sys
 import re
 import signal
-import json
 import logging
-from datetime import datetime
 from dotenv import load_dotenv
 
 import telebot
@@ -25,8 +23,7 @@ if not token:
     exit(1)
 log_channel = os.environ.get('LOG_CHANNEL', None)
 regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
-tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-bot-downloading')  # TODO: Amend for Windows?..
-resultdir = os.environ.get('RESULTDIR', '/tmp/ytdlp-bot-done')
+tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-telebot')
 
 default_formats = (
                     ' ba + bv[width>=800][height<=800][filesize<50M]'
@@ -53,7 +50,7 @@ options = {'format_sort': ['codec:h265:h264:h263'],
            # 'progress_hooks': [progress],  # A function to call back!
            # 'verbose': True,  # They require it for bug reporting
 
-           'paths': {'temp': tempdir, 'home': resultdir},  # Autocreated!
+           'paths': {'home': tempdir},  # Autocreated if don't exist!
            'concurrent_fragment_downloads': 10,
            'retries': 10,
            'fragment_retries': 10,
@@ -71,6 +68,12 @@ if proxy:
 
 formats = os.environ.get('FORMATS', default_formats)
 options.update({'format': formats})
+
+logger.info(f"LOG_CHANNEL: {log_channel}")
+logger.info(f"TEMPDIR: {tempdir}")
+logger.info(f"REGEX: {regex}")
+logger.info(f"PROXY: {proxy}")
+logger.info(f"FORMATS: {formats}")
 
 try:
     bot = telebot.TeleBot(token)
@@ -172,9 +175,10 @@ def check_message(message):
                 bot.send_video(message.chat.id, file, reply_to_message_id=message.id,
                                caption=url if one_video_sent else message.text)
                 one_video_sent = True
-                os.remove(filename)
             except Exception as error:
                 notify(error, url)
+
+        os.remove(filename)
 
     if one_video_sent:
         bot.delete_message(message.chat.id, message.id)

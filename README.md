@@ -15,36 +15,37 @@ If no such format is detected, then the download attempt is considered a failure
 
 
 ## Self hosting
-### Level 1: Windows
-Not tested. It would probably be enough to adjust paths in your .env file.
 
-### Level 2: Linux
-You might have some trouble installing Python packages from pip
-unless you already have it set up and/or know how to use virtualenv.
-Explaining how to set up Python is out of scope, so consider using Docker instead. 
+### Windows / Linux
+It is assumed that you already have Python installed and configured, and can install
+requirements from pip.
 
 - Clone the project
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
-- Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,
-the rest are optional, in case you want to override the defaults)
-- Install dependencies and run the bot:
-```bash
-pip install -r requirements.txt
-python3 main.py
-```
+- Copy `env_example` into `.env`, adjust its values
+  - `TOKEN` is mandatory, the rest are optional
+  - On Windows, you might want to adjust `TEMPDIR`, because by default it will
+    download to the root of your current drive. For example, if you want videos
+    to be downloaded into the current directory, specify "."
+  - `PROXY`, if you need it
 
-### Level 3: Docker
-Naturally, you must have Docker installed and working, but this is as simple as
-installing the correct package and adding yourself to the `docker` group.
+
+- Install [ffmpeg](https://ffmpeg.org/)
+- Install dependencies: `pip install -r requirements.txt`
+- Run the bot: `python3 main.py` (on Windows: `python main.py`)
+
+### Docker
+It is assumed that you already have Docker installed and configured.
 
 - Clone the project
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
-- Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,
-the rest are optional, in case you want to override the defaults)
+- Copy `env_example` into `.env`, adjust its values
+
+
 - Install the systemd service file:
 ```bash
 sudo cp ytdlp.service /etc/systemd/system/
-sudo systemctl enable ytdlp  # To be started at system boot
+sudo systemctl enable ytdlp  # If you want it to be started at system boot
 ```
 - Launch `docker-redeploy.sh`: it will build/rebuild the container, restart the service,
 and then attach to the logs to let you confirm a successful redeployment.
