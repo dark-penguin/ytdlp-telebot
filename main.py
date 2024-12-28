@@ -82,7 +82,7 @@ except Exception as err:
     exit(1)
 
 
-def notify(error, url, extra=None):  # Post a message into the "notification channel"
+def notify(error, url=None, extra=None):  # Post a message into the "notification channel"
     logger.info(f"-- Sending a notification for {url}: {error}")
     if log_channel:
         message = f'{error}'
@@ -90,7 +90,8 @@ def notify(error, url, extra=None):  # Post a message into the "notification cha
             message += f'\n\n{type(error.exc_info[1])}'
         if extra:
             message += f'\n\n{extra}'
-        message += f'\n\n{url}'
+        if url:
+            message += f'\n\n{url}'
         bot.send_message(log_channel, message)  # It gets logged to stderr already, so no need to print it!
 
 
@@ -173,7 +174,7 @@ def check_message(message):
             try:
                 # Repost the whole original text in the first message; in other messages, only post the URL
                 text = message.text + f"\n\n@{message.from_user.username}"
-                bot.send_video(message.chat.id, file, #reply_to_message_id=message.id,
+                bot.send_video(message.chat.id, file,
                                caption=url if one_video_sent else text)
                 one_video_sent = True
             except Exception as error:
@@ -182,7 +183,10 @@ def check_message(message):
         os.remove(filename)
 
     if one_video_sent:
-        bot.delete_message(message.chat.id, message.id)
+        try:
+            bot.delete_message(message.chat.id, message.id)
+        except Exception as error:
+            notify(error)
 
 
 def stop(sig, _):
