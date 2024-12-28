@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import telebot
 from yt_dlp import YoutubeDL, utils
 
-import json  # For debug dumpung a part of the json info
+import json
 
 
 load_dotenv()  # Load envvars from .env
@@ -91,6 +91,7 @@ def check_message(message):
     if not matches:
         return
 
+    one_video_sent = False  # Hopefully this if per-invocation (concurrent-safe)!..
     for url in matches:
         timestamp = f"{datetime.now():%Y-%m-%d_%H:%M:%S}"  # 2024-12-27 14:30:15
         filename = f'{timestamp}.%(ext)s'
@@ -142,11 +143,15 @@ def check_message(message):
 
         with open(filename, 'rb') as file:
             try:
-                # TODO: delete the original message, repost its contents under the URL and the sender name
-                bot.send_video(message.chat.id, file, caption=url)
+                # Repost the whole original text in the first message; in other messages, only post the URL
+                bot.send_video(message.chat.id, file, reply_to_message_id=message.id,
+                               caption=message.text if not one_video_sent else url)
                 os.remove(filename)
             except Exception as error:
-                log(f"{error}\n{url}")
+                log(f"{error}\n\n{url}")
+
+    if one_video_sent:
+        bot.delete_message(message.chat.id, message.id)
 
 
 def stop(sig, _):
