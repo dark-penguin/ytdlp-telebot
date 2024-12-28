@@ -13,7 +13,8 @@ from yt_dlp import YoutubeDL, utils
 
 logging.basicConfig(format="%(levelname)s:%(module)s: %(message)s")
 logger = logging.getLogger(__name__)  # This logger's name does not matter!
-logger.setLevel(logging.DEBUG if "--debug" in sys.argv else logging.WARNING)
+DEBUG = "--debug" in sys.argv
+logger.setLevel(logging.DEBUG if DEBUG else logging.WARNING)
 
 
 load_dotenv()  # Load values from .env into envvars
@@ -78,8 +79,15 @@ except Exception as err:
     exit(1)
 
 
-def log(message):
+def notify(error, url, extra=None):  # Post a message into the "notification channel"
+    logger.info(f"-- Sending a notification for {url}: {error}")
     if log_channel:
+        message = f'{error}'
+        if DEBUG and isinstance(error, utils.DownloadError):  # Then it has .exc_info[1] !
+            message += f'\n\n{type(error.exc_info[1])}'
+        if extra:
+            message += f'\n\n{extra}'
+        message += f'\n\n{url}'
         bot.send_message(log_channel, message)  # It gets logged to stderr already, so no need to print it!
 
 
@@ -89,18 +97,19 @@ def send_welcome(message):
                           "and if they contain any videos, I try to download and post them.")
 
 
-@bot.message_handler(func=lambda message: True)  # Just check all messages!
+@bot.message_handler(func=lambda message: True)  # Just check all messages - no need to filter here!
 def check_message(message):
     matches = re.findall(regex, message.text)
     if not matches:
         return
 
-    one_video_sent = False  # Hopefully this if per-invocation (concurrent-safe)!..
+    one_video_sent = False  # I've checked that this is safe for concurrent invocations!
+    local_counter = 0
     for url in matches:
         logger.info(f"-- Downloading video {matches.index(url)+1} of {len(matches)}")
 
-        timestamp = f"{datetime.now():%Y-%m-%d_%H:%M:%S}"  # 2024-12-27 14:30:15
-        filename = f'{timestamp}.%(ext)s'
+        local_counter += 1
+        filename = f"{message.chat.id}-{message.id}-{local_counter}.%(ext)s"  # This filename will be unique
 
         try:
             # Quick check if this is a playlist - we don't want to accidentally download it
@@ -135,9 +144,9 @@ def check_message(message):
                 logger.info('-- Third query: extract formats')
                 # with open("/tmpfs/test.log", 'w') as file:
                 #     json.dump(info.get('formats'), file, indent=4)
-                log(f"{error}\n\n{type(error.exc_info[1])}\n\nFormats available: <WIP>\n\n{url}")
+                notify(error, url, "Formats available: <WIP>")
                 continue
-            log(f"{error}\n\n{type(error.exc_info[1])}\n\n{url}")
+            notify(error, url)
             continue
 
         # DEBUG: dump 'info' into a file (you'll need to import json for this)
@@ -150,12 +159,12 @@ def check_message(message):
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
         if len(filenames) != 1:
-            log(f"WARNING! Got {len(filenames)} downloaded files for some reason!\n{url}")
+            notify(f"WARNING: Got {len(filenames)} downloaded files for some reason!", url)
         filename = filenames[0].get('filepath')
 
         # Check that we're going to delete a normal file
         if not os.path.isfile(filename):
-            log(f"WARNING! File does not exist (or is not a file): {filename}\n{url}")
+            notify(f"WARNING: File not found: {filename}", url)
 
         with open(filename, 'rb') as file:
             try:
@@ -165,7 +174,7 @@ def check_message(message):
                 one_video_sent = True
                 os.remove(filename)
             except Exception as error:
-                log(f"{error}\n\n{url}")
+                notify(error, url)
 
     if one_video_sent:
         bot.delete_message(message.chat.id, message.id)
