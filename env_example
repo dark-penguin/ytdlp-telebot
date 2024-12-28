@@ -16,20 +16,20 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 # - Single file, same resolution
 # - Anything that's available of lower resolution
 # - And all the same things in case the site does not expose sizes properly
-FORMATS="
- ba + bv[width>=800][height<=800][filesize<50M]
-/ba + bv[width<=800][height>=800][filesize<50M]
-/   best[width>=800][height<=800][filesize<50M]
-/   best[width<=800][height>=800][filesize<50M]
-
-/ba + bv[width<=800][height<=800][filesize<50M]
-/   best[width<=800][height<=800][filesize<50M]
-
-/ba + bv[width>=800][height<=800]
-/ba + bv[width<=800][height>=800]
-/   best[width>=800][height<=800]
-/   best[width<=800][height>=800]
-
-/ba + bv[width<=800][height<=800]
-/   best[width<=800][height<=800]
-"
+#FORMATS="
+# ba + bv[width>=800][height<=800][filesize<50M]
+#/ba + bv[width<=800][height>=800][filesize<50M]
+#/   best[width>=800][height<=800][filesize<50M]
+#/   best[width<=800][height>=800][filesize<50M]
+#
+#/ba + bv[width<=800][height<=800][filesize<50M]
+#/   best[width<=800][height<=800][filesize<50M]
+#
+#/ba + bv[width>=800][height<=800]
+#/ba + bv[width<=800][height>=800]
+#/   best[width>=800][height<=800]
+#/   best[width<=800][height>=800]
+#
+#/ba + bv[width<=800][height<=800]
+#/   best[width<=800][height<=800]
+#"

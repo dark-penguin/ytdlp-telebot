@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)  # This logger's name does not matter!
 logger.setLevel(logging.DEBUG if "--debug" in sys.argv else logging.WARNING)
 
 
-load_dotenv()  # Load envvars from .env
+load_dotenv()  # Load values from .env into envvars
 
 token = os.environ.get('TOKEN', None)
 if not token:
@@ -24,43 +24,45 @@ if not token:
     exit(1)
 log_channel = os.environ.get('LOG_CHANNEL', None)
 regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
-tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-bot-downloading')  # Amend for Windows?..
+tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-bot-downloading')  # TODO: Amend for Windows?..
 resultdir = os.environ.get('RESULTDIR', '/tmp/ytdlp-bot-done')
 
-default_formats = ('  ba + bv[height<=800] '
-                   '/ ba + bv[width<=800] '  # For vertical videos, it's width, not height!
-                   '/    best[height<=800] '
-                   '/    best[width<=800]')
+default_formats = (
+                    ' ba + bv[width>=800][height<=800][filesize<50M]'
+                    '/ba + bv[width<=800][height>=800][filesize<50M]'
+                    '/   best[width>=800][height<=800][filesize<50M]'
+                    '/   best[width<=800][height>=800][filesize<50M]'
+                    
+                    '/ba + bv[width<=800][height<=800][filesize<50M]'
+                    '/   best[width<=800][height<=800][filesize<50M]'
+                    
+                    '/ba + bv[width>=800][height<=800]'
+                    '/ba + bv[width<=800][height>=800]'
+                    '/   best[width>=800][height<=800]'
+                    '/   best[width<=800][height>=800]'
+                    
+                    '/ba + bv[width<=800][height<=800]'
+                    '/   best[width<=800][height<=800]'
+                    )
 
 options = {'format_sort': ['codec:h265:h264:h263'],
            'max_filesize': 52428800,  # 50 MB - Telegram's limit for bots; abort if larger
            'subtitleslangs': ['en'],
            'writesubtitles': True,
-           # 'progress_hooks': [progress],  # A function to call back!..
+           # 'progress_hooks': [progress],  # A function to call back!
            # 'verbose': True,  # They require it for bug reporting
 
            'paths': {'temp': tempdir, 'home': resultdir},  # Autocreated!
            'concurrent_fragment_downloads': 10,
+           'retries': 10,
+           'fragment_retries': 10,
 
            'postprocessors': [{'key': 'FFmpegEmbedSubtitle',  # Subs: do not embed if subs already present?
-                               'already_have_subtitle': False,
-                               },
+                               'already_have_subtitle': False},
                               {'key': 'FFmpegMetadata',  # Metadata: only chapters
                                'add_chapters': True,
                                'add_infojson': False,
-                               'add_metadata': False,
-                               },
-                              # {'key': 'FFmpegConcat',  # Looks like something I did not ask for!
-                              #  'only_multi_video': True,
-                              #  'when': 'playlist'
-                              #  }
-                              ],
-
-           # Options set by default for the commandline (but not for the API!)
-           # 'ignoreerrors': 'only_download',  # CLI default: 'only_download', API default: False
-           'retries': 10,
-           'fragment_retries': 10,
-           }
+                               'add_metadata': False},]}
 
 proxy = os.environ.get('PROXY', None)
 if proxy:
@@ -77,9 +79,8 @@ except Exception as err:
 
 
 def log(message):
-    # It gets logged to stderr already, so no need to print it!
     if log_channel:
-        bot.send_message(log_channel, message)
+        bot.send_message(log_channel, message)  # It gets logged to stderr already, so no need to print it!
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -104,10 +105,11 @@ def check_message(message):
         try:
             # Quick check if this is a playlist - we don't want to accidentally download it
             # If we download a playlist non-flatly, it will throw errors about deleted videos!
+            # We want the playlist to successfully abort, so it must not go into the "except:" territory!
             logger.info('-- First query: "flat" general information to check for playlist')
             with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-            # It is possible that we get "Requested format not available" right here!
+            # It is possible that we get "Requested format not available" right here! (Not for a playlist!)
             # Then we fall into "except:", and 'info' is still unassigned!
             if info.get('entries') or (info.get('_type') == "playlist"):
                 continue  # If this is a playlist, abort quietly
@@ -131,8 +133,8 @@ def check_message(message):
                 # TODO: The output is too large for Telegram - should process it first!
                 # TODO: DEBUG - how the fuck do I process this JSON?..
                 logger.info('-- Third query: extract formats')
-                with open("/tmpfs/test.log", 'w') as file:
-                    json.dump(info.get('formats'), file, indent=4)
+                # with open("/tmpfs/test.log", 'w') as file:
+                #     json.dump(info.get('formats'), file, indent=4)
                 log(f"{error}\n\n{type(error.exc_info[1])}\n\nFormats available: <WIP>\n\n{url}")
                 continue
             log(f"{error}\n\n{type(error.exc_info[1])}\n\n{url}")
@@ -143,6 +145,7 @@ def check_message(message):
         #     json.dump(info, file, indent=4)
         # with open("/tmpfs/test.log", 'w') as file:
         #     json.dump(info.get('requested_downloads'), file, indent=4)
+
 
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
@@ -169,7 +172,7 @@ def check_message(message):
 
 
 def stop(sig, _):
-    # Better print this because it's not a "warning/error" level but we want to see it
+    # Better 'print' this because it's not a "warning/error" level but we want to see it
     print(f"Caught {signal.Signals(sig).name}, exiting gracefully...")
     bot.stop_bot()
     exit(0)
