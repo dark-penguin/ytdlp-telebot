@@ -27,7 +27,7 @@ Explaining how to set up Python is out of scope, so consider using Docker instea
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
 - Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,
 the rest are optional, in case you want to override the defaults)
-- Install dependencies and run the bot
+- Install dependencies and run the bot:
 ```bash
 pip install -r requirements.txt
 python3 main.py
@@ -35,17 +35,17 @@ python3 main.py
 
 ### Level 3: Docker
 Naturally, you must have Docker installed and working, but this is as simple as
-installing a package and adding yourself to the `docker` group.
+installing the correct package and adding yourself to the `docker` group.
 
 - Clone the project
 - Create a new bot and get a token from [BotFather](https://t.me/BotFather)
 - Copy `env_example` into `.env`, adjust its values (TOKEN is mandatory,
 the rest are optional, in case you want to override the defaults)
-- Simply launch `docker-redeploy.sh`. It will [re]build the container,
-stop the old one if it's already running, and launch the new one.
-- If you want it installed as a service, install the service file:
+- Install the systemd service file:
 ```bash
 sudo cp ytdlp.service /etc/systemd/system/
 sudo systemctl enable ytdlp  # To be started at system boot
-sudo systemctl start ytdlp  # To start it now
 ```
+- Launch `docker-redeploy.sh`: it will build/rebuild the container, restart the service,
+and then attach to the logs to let you confirm a successful redeployment.
+(Just use Ctrl+C to detach from the logs.)
