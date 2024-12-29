@@ -85,7 +85,7 @@ except Exception as err:
 def extract_formats(info):
     result = []
     for i in info:  # There are multiple format entries!
-        # Extract data
+        # Map data
         # format_id = i.get('format_id')
         filesize = i.get('filesize')
         width = i.get('width')
@@ -99,8 +99,6 @@ def extract_formats(info):
 
         # Normalize data
         filesize = filesize // 1048576 if filesize else None
-        # video = video if video != 'none' else None
-        # audio = audio if audio != 'none' else None
         video = video.split('.')[0] if video != 'none' else None
         audio = audio.split('.')[0] if audio != 'none' else None
 
@@ -166,7 +164,11 @@ def notify(error, url=None, extra=None):  # Post a message into the "notificatio
         if url:
             message += f'\n\n{url}'
         # It gets logged to stderr already, so no need to print it!
-        bot.send_message(log_channel, message)
+        try:
+            bot.send_message(log_channel, message)
+        except Exception as error:
+            # Don't send any original text because that might be the cause of the failure!
+            bot.send_message(log_channel, f"⚠️ FAILED to post an error message!\nPossible reason:\n\n" + str(error))
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -175,6 +177,11 @@ def send_welcome(message):
                           "and if they contain any videos, I try to download and post them.")
 
 
+# By default, the handler is not invoked on any messages that have any attachments!
+# This is actually good - just ignore those!
+# This is how you would specify other applicable types of messages to receive:
+#@bot.message_handler(content_types=['text', 'photo', 'document', 'audio', 'video',
+#                     'voice', 'sticker', 'contact', 'location', 'poll'])
 @bot.message_handler(func=lambda message: True)  # Just check all messages - no need to filter here!
 def check_message(message):
     matches = re.findall(regex, message.text)

@@ -55,3 +55,16 @@ sudo systemctl enable ytdlp  # If you want it to be started at system boot
 - Launch `docker-redeploy.sh`: it will build/rebuild the container, restart the service,
 and then attach to the logs to let you confirm a successful redeployment.
 (Just use Ctrl+C to detach from the logs.)
+
+
+## Known issues
+- The bot ignores messages that have any kind of attachments ('photo', 'document',
+'audio', 'video', 'voice', 'sticker', 'contact', 'location', 'poll'). This is actually good:
+if you have any kind of attachment, then it's not just a meme you want to pre-download
+for convenience, and any links are probably not the main focus of the message.
+You can always repost the links in separate messages if you want. Trying to repost
+and delete the priginal message is likely not a very good idea in this case.
+- When reposting the contents of the original message, it is not possible
+(at least according to my research) to preserve its formatting. So, the formatting
+will be lost, and the message still deleted, because there is no way to even know
+if there was any formatting. This is not much of a problem though.
