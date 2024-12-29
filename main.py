@@ -82,6 +82,79 @@ except Exception as err:
     exit(1)
 
 
+def extract_formats(info):
+    result = []
+    for i in info:  # There are multiple format entries!
+        # Extract data
+        # format_id = i.get('format_id')
+        filesize = i.get('filesize')
+        width = i.get('width')
+        height = i.get('height')
+        fps = i.get('fps')
+        video = i.get('vcodec', 'none') or 'none'
+        audio = i.get('acodec', 'none') or 'none'
+        samplerate = i.get('asr')
+        bitrate = i.get('abr') or i.get('tbr')
+        vbr = i.get('vbr')
+
+        # Normalize data
+        filesize = filesize // 1048576 if filesize else None
+        # video = video if video != 'none' else None
+        # audio = audio if audio != 'none' else None
+        video = video.split('.')[0] if video != 'none' else None
+        audio = audio.split('.')[0] if audio != 'none' else None
+
+        if not video and not audio:
+            continue  # Skip the "stupid" formats
+
+        result.append({
+            'filesize': filesize,
+            'width': width,
+            'height': height,
+            'fps': fps,
+            'video': video,
+            'audio': audio,
+            'samplerate': samplerate,
+            'bitrate': bitrate,
+            'vbr': vbr,
+            })
+
+    def sorter(key):
+        if key['video']:
+            return max(key['width'], key['height']), key['fps'], key['vbr'] or 0
+        elif key['audio']:
+            return key['bitrate'], 0, key['bitrate'] or 0
+
+    result.sort(key=sorter)
+    return result
+
+
+def render_formats(result):
+    display = f"{'Resolution':^14} {'Bitrate':^9} {'Size':^8} {'Codecs'}\n"
+    # One line is up to 50 symbols long (usually); that's what fits well
+    # Max message length is 4096 chars, and we have the caption on top of that
+    # So, we can afford up to 80 lines (even a little over that)
+    max_lines = 80
+    if result[-max_lines:] != result:
+        display += f"  <...over {max_lines} lines - truncated...>\n"
+    for r in result[-max_lines:]:
+        size = f"({r['filesize']} MB)" if r['filesize'] else f"(      )"
+        resolution = f"{r['width'] or '-'}x{r['height'] or '-'}p{r['fps'] or ''}" if r['video'] \
+            else f"{r['samplerate'] or '---'}"
+        bitrate = f"{int(r['vbr']) if r['vbr'] else '---'}:{int(r['bitrate']) if r['bitrate'] else '---'}"
+        codecs = f"{r['video'] or '---'}:{r['audio'] or '---'}"
+
+        display += f"{resolution:14} {bitrate:9} {size:>8} {codecs}\n"
+    print("Formats available:\n", display)  # This line is added after markup
+    return display
+
+
+def escape_markdown(text):
+    special_chars = r'[_*`\[\]()~#>+-.]'
+    escaped_text = re.sub(special_chars, r'\\\g<0>', text)
+    return escaped_text
+
+
 def notify(error, url=None, extra=None):  # Post a message into the "notification channel"
     logger.info(f"-- Sending a notification for {url}: {error}")
     if log_channel:
@@ -92,7 +165,8 @@ def notify(error, url=None, extra=None):  # Post a message into the "notificatio
             message += f'\n\n{extra}'
         if url:
             message += f'\n\n{url}'
-        bot.send_message(log_channel, message)  # It gets logged to stderr already, so no need to print it!
+        # It gets logged to stderr already, so no need to print it!
+        bot.send_message(log_channel, message)
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -139,26 +213,25 @@ def check_message(message):
             elif isinstance(error.exc_info[1], utils.ExtractorError):
                 # !! NOTE that 'info' might still be unassigned!
                 # We'd like to see what formats are available
-                with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
-                    info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-
-
-                # TODO: The output is too large for Telegram - should process it first!
-                # TODO: DEBUG - how the fuck do I process this JSON?..
                 logger.info('-- Third query: extract formats')
-                # with open("/tmpfs/test.log", 'w') as file:
-                #     json.dump(info.get('formats'), file, indent=4)
-                notify(error, url, "Formats available: <WIP>")
+                try:
+                    with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
+                        info = ydl.sanitize_info(ydl.extract_info(url, download=False))
+                except utils.DownloadError as new_error:
+                    notify(error, url, "Formats available: FAILED to extract! (see the error below)")
+                    notify(new_error, url, "This happened while trying to extract available formats")
+                    continue
+
+                # Parse 'info' and present it (now it's definitely assigned!)
+                # notify(error, url, f"{render_formats(extract_formats(info.get('formats')))}")
+                notify(error, url)
+                # Escape existing message, then apply markup on top of it
+                rendered_formats = escape_markdown(render_formats(extract_formats(info.get('formats'))))
+                rendered_formats = f"Formats available:\n```\n{rendered_formats}\n```"
+                bot.send_message(log_channel, rendered_formats, parse_mode='MarkdownV2')
                 continue
             notify(error, url)
             continue
-
-        # DEBUG: dump 'info' into a file (you'll need to import json for this)
-        # with open("/tmpfs/full.log", 'w') as file:
-        #     json.dump(info, file, indent=4)
-        # with open("/tmpfs/test.log", 'w') as file:
-        #     json.dump(info.get('requested_downloads'), file, indent=4)
-
 
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
@@ -174,8 +247,7 @@ def check_message(message):
             try:
                 # Repost the whole original text in the first message; in other messages, only post the URL
                 text = message.text + f"\n\n@{message.from_user.username}"
-                bot.send_video(message.chat.id, file,
-                               caption=url if one_video_sent else text)
+                bot.send_video(message.chat.id, file, caption=url if one_video_sent else text)
                 one_video_sent = True
             except Exception as error:
                 notify(error, url)
