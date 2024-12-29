@@ -2,16 +2,21 @@
 A Telegram bot for [yt-dlp](https://github.com/yt-dlp/yt-dlp) made with Telebot
 aka [pyTelegramBotAPI](https://github.com/eternnoir/pyTelegramBotAPI)
 
-- You can message the bot privately, or invite it to a group chat
+- You can message the bot privately, or invite it to a group chat.
 - The bot will monitor all posted messages, detect any HTTP[S] links in them,
-and attempt to download them using yt-dlp
+and attempt to download them using yt-dlp.
+- If it succeeds, it will upload the video, post it with the contents of your
+original post, and remove your original post to avoid clutter.
+- Multiple links per message are supported. If there are multiple links in your post,
+then the bot will download all of them and post multiple videos, each video annotated
+with its own URL. The contents of your original post are then only copied to the first video.
 - Unsuccessful attempts are simply ignored (because not all links are videos).
-On successfull attempts, the bot will upload the video into the chat,
-annotating it with the original link.
-- Multiple links per message are supported.
 - Note that [Telegram limits the size of videos uploaded by bots to 50 MB](https://core.telegram.org/bots/faq#how-do-i-upload-a-large-file).
 This bot will attempt to download videos below that size, ideally in 720p.
 If no such format is detected, then the download attempt is considered a failure.
+- You can optionally enable sending notifications about some errors into
+a specified channel. For example, you will receive notifications about videos
+which are available but failed to download, so you can investigate the reason.
 
 
 ## Self hosting
