@@ -56,6 +56,8 @@ options = {'format_sort': ['codec:h265:h264:h263'],
            'retries': 10,
            'fragment_retries': 10,
 
+           'skip_unavailable_fragments': False,  # Abort on fragment failures - to catch SABR errors
+
            'postprocessors': [{'key': 'FFmpegEmbedSubtitle',  # Subs: do not embed if subs already present?
                                'already_have_subtitle': False},
                               {'key': 'FFmpegMetadata',  # Metadata: only chapters
