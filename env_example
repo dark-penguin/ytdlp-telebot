@@ -11,6 +11,11 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 #REGEX='\bhttps?://\S*\b'      # Regex to identify possible links
 #PROXY="192.168.0.1:8080"      # Proxy for yt-dlp to download through
 
+# Hack against YouTube forcing SABR
+#EXTRA_ARGS='{"extractor-args":"youtube:player-client=default,web"}'
+# Try 'tv', 'ios', 'web', 'mweb'
+# If it doesn't work, try getting a POT: see https://github.com/yt-dlp/yt-dlp/issues/12482
+
 # - Separate video+audio, up to 1280x720 or vertical 720x1280
 # - Single file, same resolution
 # - Anything that's available of lower resolution

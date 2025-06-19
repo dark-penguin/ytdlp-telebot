@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import re
@@ -69,10 +70,16 @@ if proxy:
 formats = os.environ.get('FORMATS', default_formats)
 options.update({'format': formats})
 
+extra_args = os.environ.get('EXTRA_ARGS')
+if extra_args:
+    extra_args = json.loads(extra_args)
+    options.update()
+
 logger.info(f"LOG_CHANNEL: {log_channel}")
 logger.info(f"TEMPDIR: {tempdir}")
 logger.info(f"REGEX: {regex}")
 logger.info(f"PROXY: {proxy}")
+logger.info(f"EXTRA_ARGS: {extra_args}")
 logger.info(f"FORMATS: {formats}")
 
 try:
