@@ -190,12 +190,9 @@ def check_message(message):
         return
 
     one_video_sent = False  # I've checked that this is safe for concurrent invocations!
-    local_counter = 0
-    for url in matches:
-        logger.info(f"-- Downloading video {matches.index(url)+1} of {len(matches)}")
-
-        local_counter += 1
-        filename = f"{message.chat.id}-{message.id}-{local_counter}.%(ext)s"  # This filename will be unique
+    for index, url in enumerate(matches):
+        logger.info(f"-- Downloading video {index+1} of {len(matches)}")
+        filename = f"{message.chat.id}-{message.id}-{index+1}.%(ext)s"  # This filename will be unique
 
         try:
             # Quick check if this is a playlist - we don't want to accidentally download it
