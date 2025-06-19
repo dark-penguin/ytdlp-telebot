@@ -251,12 +251,24 @@ def check_message(message):
         if not os.path.isfile(filename):
             notify(f"WARNING: File not found: {filename}", url)
 
+        # Compose and post the message
         with open(filename, 'rb') as file:
             try:
-                # Repost the whole original text in the first message; in other messages, only post the URL
-                text = message.text + f"\n\n@{message.from_user.username}"
-                bot.send_video(message.chat.id, file, caption=url if one_video_sent else text)
+                # Video caption (for all messages)
+                html = f"<b>{info.get('fulltitle')}</b>\n" if info.get('fulltitle') else ""
+                if one_video_sent:
+                    # This is a follow-up video - add the URL
+                    html += url
+                else:
+                    # This is the first video - include the original message
+                    html += "\n" + message.html_text
+                    # Tag the sender (Annie asked to leave it on; to see who posted the original message)
+                    if message.chat.type != "private":  # But not if it's in direct messages!
+                        html += f"\n\n@{message.from_user.username}"
+
+                bot.send_video(message.chat.id, file, caption=html, parse_mode="HTML")
                 one_video_sent = True
+
             except Exception as error:
                 notify(error, url)
 
