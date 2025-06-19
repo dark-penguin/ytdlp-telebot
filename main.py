@@ -154,22 +154,22 @@ def render_formats(result):
     return display
 
 
-def notify(error, url=None, extra=None):  # Post a message into the "notification channel"
+def notify(original_message, error, url=None, extra=None):
     logger.info(f"-- Sending a notification for {url}: {error}")
-    if log_channel:
-        message = f'{error}'
-        if DEBUG and isinstance(error, utils.DownloadError):  # Then it has .exc_info[1] !
-            message += f'\n\n{type(error.exc_info[1])}'
-        if extra:
-            message += f'\n\n{extra}'
-        if url:
-            message += f'\n\n{url}'
-        # It gets logged to stderr already, so no need to print it!
-        try:
-            bot.send_message(log_channel, message)
-        except Exception as error:
-            # Don't send any original text because that might be the cause of the failure!
-            bot.send_message(log_channel, f"⚠️ FAILED to post an error message!\nPossible reason:\n\n" + str(error))
+    message = f'{error}'
+    if DEBUG and isinstance(error, utils.DownloadError):  # Then it has .exc_info[1] !
+        message += f'\n\n{type(error.exc_info[1])}'
+    if extra:
+        message += f'\n\n{extra}'
+    if url:
+        message += f'\n\n{url}'
+    # It gets logged to stderr already, so no need to print it!
+    try:
+        bot.send_message(original_message.chat.id, message, reply_to_message_id=original_message.message_id)
+    except Exception as error:
+        # Don't send any original text because that might be the cause of the failure!
+        bot.send_message(original_message.chat.id, f"⚠️ FAILED to post an error message!"
+                                                   f"\nPossible reason:\n\n{str(error)}")
 
 
 @bot.message_handler(commands=['start', 'help'])
@@ -226,30 +226,30 @@ def check_message(message):
                     with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
                         info = ydl.sanitize_info(ydl.extract_info(url, download=False))
                 except utils.DownloadError as new_error:
-                    notify(error, url, "Formats available: FAILED to extract! (see the error below)")
-                    notify(new_error, url, "This happened while trying to extract available formats")
+                    notify(message, error, url, "Formats available: FAILED to extract! (see the error below)")
+                    notify(message, new_error, url, "This happened while trying to extract available formats")
                     continue
 
                 # Parse 'info' and present it (now it's definitely assigned!)
-                # notify(error, url, f"{render_formats(extract_formats(info.get('formats')))}")
-                notify(error, url)
+                # notify(message, error, url, f"{render_formats(extract_formats(info.get('formats')))}")
+                notify(message, error, url)
                 # Escape existing message, then apply markup on top of it
                 rendered_formats = render_formats(extract_formats(info.get('formats')))
                 rendered_formats = f"Formats available:\n<pre>{rendered_formats}</pre>"
                 bot.send_message(log_channel, rendered_formats, parse_mode='HTML')
                 continue
-            notify(error, url)
+            notify(message, error, url)
             continue
 
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
         if len(filenames) != 1:
-            notify(f"WARNING: Got {len(filenames)} downloaded files for some reason!", url)
+            notify(message, f"WARNING: Got {len(filenames)} downloaded files for some reason!", url)
         filename = filenames[0].get('filepath')
 
         # Check that we're going to delete a normal file
         if not os.path.isfile(filename):
-            notify(f"WARNING: File not found: {filename}", url)
+            notify(message, f"WARNING: File not found: {filename}", url)
 
         # Compose and post the message
         with open(filename, 'rb') as file:
@@ -270,7 +270,7 @@ def check_message(message):
                 one_video_sent = True
 
             except Exception as error:
-                notify(error, url)
+                notify(message, error, url)
 
         os.remove(filename)
 
@@ -278,7 +278,7 @@ def check_message(message):
         try:
             bot.delete_message(message.chat.id, message.id)
         except Exception as error:
-            notify(error)
+            notify(message, error)
 
 
 def stop(sig, _):
