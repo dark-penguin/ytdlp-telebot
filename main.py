@@ -198,7 +198,7 @@ def check_message(message):
             # Quick check if this is a playlist - we don't want to accidentally download it
             # If we download a playlist non-flatly, it will throw errors about deleted videos!
             # We want the playlist to successfully abort, so it must not go into the "except:" territory!
-            logger.info('-- First query: "flat" general information to check for playlist')
+            logger.info('-- Checking if this is a playlist')
             with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=False))
             # It is possible that we get "Requested format not available" right here! (Not for a playlist!)
@@ -206,19 +206,20 @@ def check_message(message):
             if info.get('entries') or (info.get('_type') == "playlist"):
                 continue  # If this is a playlist, abort quietly
 
-            logger.info('-- Second query: attempt to download the video')
+            logger.info('-- Attempting to download the video')
             with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=True))
 
         except utils.DownloadError as error:  # Note that you can't handle errors "normally" in yt-dlp!
             # Check for UnsupportedError first, because it is also an ExtractorError!
             if isinstance(error.exc_info[1], utils.UnsupportedError):
+                # This is not a video - just move on to the next link
                 continue
             # Check this with "elif", or continue, because otherwise both will match!
             elif isinstance(error.exc_info[1], utils.ExtractorError):
                 # !! NOTE that 'info' might still be unassigned!
                 # We'd like to see what formats are available
-                logger.info('-- Third query: extract formats')
+                logger.info('-- Download failed: extract formats for the error message')
                 try:
                     with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
                         info = ydl.sanitize_info(ydl.extract_info(url, download=False))
