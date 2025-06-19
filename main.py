@@ -154,12 +154,6 @@ def render_formats(result):
     return display
 
 
-def escape_markdown(text):
-    special_chars = r'[_*`\[\]()~#>+-.]'
-    escaped_text = re.sub(special_chars, r'\\\g<0>', text)
-    return escaped_text
-
-
 def notify(error, url=None, extra=None):  # Post a message into the "notification channel"
     logger.info(f"-- Sending a notification for {url}: {error}")
     if log_channel:
@@ -240,9 +234,9 @@ def check_message(message):
                 # notify(error, url, f"{render_formats(extract_formats(info.get('formats')))}")
                 notify(error, url)
                 # Escape existing message, then apply markup on top of it
-                rendered_formats = escape_markdown(render_formats(extract_formats(info.get('formats'))))
-                rendered_formats = f"Formats available:\n```\n{rendered_formats}\n```"
-                bot.send_message(log_channel, rendered_formats, parse_mode='MarkdownV2')
+                rendered_formats = render_formats(extract_formats(info.get('formats')))
+                rendered_formats = f"Formats available:\n<pre>{rendered_formats}</pre>"
+                bot.send_message(log_channel, rendered_formats, parse_mode='HTML')
                 continue
             notify(error, url)
             continue
