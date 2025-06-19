@@ -224,8 +224,10 @@ def check_message(message):
                     with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
                         info = ydl.sanitize_info(ydl.extract_info(url, download=False))
                 except utils.DownloadError as new_error:
-                    notify(message, error, url, "Formats available: FAILED to extract! (see the error below)")
-                    notify(message, new_error, url, "This happened while trying to extract available formats")
+                    # notify(message, error, url, "Formats available: FAILED to extract! (see the error below)")
+                    # Do not send the error about format extraction - that's too much spam
+                    notify(message, error, url, "Formats available: FAILED to extract!")
+                    # notify(message, new_error, url, "This happened while trying to extract available formats")
                     continue
 
                 # Parse 'info' and present it (now it's definitely assigned!)
