@@ -6,7 +6,6 @@
 TOKEN=""  # Get it from BotFather t.me/BotFather
 
 # Optional
-#LOG_CHANNEL="-100xxxxxxxxxx"  # If you want notifications about some errors in a channel
 #TEMPDIR="/tmp/ytdlp-telebot"  # Temporary path to download videos into
 #REGEX='\bhttps?://\S*\b'      # Regex to identify possible links
 #PROXY="192.168.0.1:8080"      # Proxy for yt-dlp to download through

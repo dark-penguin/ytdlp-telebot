@@ -22,7 +22,6 @@ token = os.environ.get('TOKEN', None)
 if not token:
     logger.error("ERROR: Specify TOKEN in an .env file or an environment variable!")
     exit(1)
-log_channel = os.environ.get('LOG_CHANNEL', None)
 regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
 tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-telebot')
 
@@ -77,7 +76,6 @@ if extra_args:
     extra_args = json.loads(extra_args)
     options.update()
 
-logger.info(f"LOG_CHANNEL: {log_channel}")
 logger.info(f"TEMPDIR: {tempdir}")
 logger.info(f"REGEX: {regex}")
 logger.info(f"PROXY: {proxy}")
@@ -238,7 +236,7 @@ def check_message(message):
                 # Escape existing message, then apply markup on top of it
                 rendered_formats = render_formats(extract_formats(info.get('formats')))
                 rendered_formats = f"Formats available:\n<pre>{rendered_formats}</pre>"
-                bot.send_message(log_channel, rendered_formats, parse_mode='HTML')
+                bot.send_message(message.chat.id, rendered_formats, parse_mode='HTML')
                 continue
             notify(message, error, url)
             continue
