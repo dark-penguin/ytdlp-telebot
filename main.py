@@ -212,8 +212,14 @@ def check_message(message):
                 continue  # If this is a playlist, abort quietly
 
             logger.info('-- Attempting to download the video')
-            with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
-                info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            try:
+                with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
+                    info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            except utils.DownloadError as error:
+                # Try again, optionally with a different proxy
+                proxy2 = os.environ.get('PROXY2', None)
+                with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, proxy=proxy2)) as ydl:
+                    info = ydl.sanitize_info(ydl.extract_info(url, download=True))
 
         except utils.DownloadError as error:  # Note that you can't handle errors "normally" in yt-dlp!
             # Check for UnsupportedError first, because it is also an ExtractorError!

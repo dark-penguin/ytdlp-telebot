@@ -9,7 +9,7 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 #TEMPDIR="/tmp/ytdlp-telebot"      # Temporary path to download videos into
 #REGEX='\bhttps?://\S*\b'          # Regex to identify possible links
 #PROXY="192.168.0.1:8888"          # Proxy for yt-dlp to download through
-#PROXY="socks5://127.0.0.1:987"    # For SOCKS5, specify it like this
+#PROXY2="socks5://127.0.0.1:987"   # For SOCKS5, specify it like this
 
 # Hack against YouTube forcing SABR
 EXTRA_ARGS='{"extractor_args": {"youtube": {"player-client": ["mweb"]}}}'
