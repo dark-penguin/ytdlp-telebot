@@ -161,7 +161,7 @@ def render_formats(result):
 
 def notify(original_message, error, url=None, extra=None):
     logger.info(f"-- Sending a notification for {url}: {error}")
-    message = f'{error}'
+    message = str(error)
     if DEBUG and isinstance(error, utils.DownloadError):  # Then it has .exc_info[1] !
         message += f'\n\n{type(error.exc_info[1])}'
     if extra:
@@ -215,7 +215,7 @@ def check_message(message):
             try:
                 with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
                     info = ydl.sanitize_info(ydl.extract_info(url, download=True))
-            except utils.DownloadError as error:
+            except utils.DownloadError:  # Discard the first error, we don't need it
                 # Try again, optionally with a different proxy
                 proxy2 = os.environ.get('PROXY2', None)
                 with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, proxy=proxy2)) as ydl:
@@ -234,7 +234,7 @@ def check_message(message):
                 try:
                     with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
                         info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-                except utils.DownloadError as new_error:
+                except utils.DownloadError:  # as new_error:  # We don't need this error - it's about extracting formats
                     # notify(message, error, url, "Formats available: FAILED to extract! (see the error below)")
                     # Do not send the error about format extraction - that's too much spam
                     notify(message, error, url, "Formats available: FAILED to extract!")
@@ -276,6 +276,9 @@ def check_message(message):
                     # Tag the sender (Annie asked to leave it on; to see who posted the original message)
                     if message.chat.type != "private":  # But not if it's in direct messages!
                         html += f"\n\n@{message.from_user.username}"
+                        # For some reason, message.forward_from is ALWAYS None!
+                        # (That probably means that both of us always hide our usernames!)
+                        # So, I can't get it to tag the author if it was forwarded!
 
                 bot.send_video(message.chat.id, file, caption=html, parse_mode="HTML")
                 one_video_sent = True
