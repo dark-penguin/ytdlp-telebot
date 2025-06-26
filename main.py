@@ -79,7 +79,7 @@ options.update({'format': formats})
 extra_args = os.environ.get('EXTRA_ARGS')
 if extra_args:
     extra_args = json.loads(extra_args)
-    options.update()
+    options.update(extra_args)
 
 logger.info(f"TEMPDIR: {tempdir}")
 logger.info(f"REGEX: {regex}")
