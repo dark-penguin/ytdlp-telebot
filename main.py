@@ -26,24 +26,29 @@ regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
 tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-telebot')
 
 default_formats = (
-                    ' ba + bv[width>=800][height<=800][filesize<50M]'
-                    '/ba + bv[width<=800][height>=800][filesize<50M]'
-                    '/   best[width>=800][height<=800][filesize<50M]'
-                    '/   best[width<=800][height>=800][filesize<50M]'
+                   ' (ba[ext=m4a] / ba)'  # Prefer m4a, otherwise it likes to get mp4 which is often "Forbidden"
+                   '    + bv[width>=800][height<=800][filesize<50M]'
+                   '/(ba[ext=m4a] / ba)'
+                   '    + bv[width<=800][height>=800][filesize<50M]'
+                   '/   best[width>=800][height<=800][filesize<50M]'
+                   '/   best[width<=800][height>=800][filesize<50M]'
                     
-                    '/ba + bv[width<=800][height<=800][filesize<50M]'
-                    '/   best[width<=800][height<=800][filesize<50M]'
+                   '/(ba[ext=m4a] / ba)'
+                   '    + bv[width<=800][height<=800][filesize<50M]'
+                   '/   best[width<=800][height<=800][filesize<50M]'
                     
-                    '/ba + bv[width>=800][height<=800]'
-                    '/ba + bv[width<=800][height>=800]'
-                    '/   best[width>=800][height<=800]'
-                    '/   best[width<=800][height>=800]'
+                   '/(ba[ext=m4a] / ba)'
+                   '    + bv[width>=800][height<=800]'  # For websites that don't expose file size
+                   '/(ba[ext=m4a] / ba)'
+                   '    + bv[width<=800][height>=800]'
+                   '/   best[width>=800][height<=800]'
+                   '/   best[width<=800][height>=800]'
                     
-                    '/ba + bv[width<=800][height<=800]'
-                    '/   best[width<=800][height<=800]'
-                    )
+                   '/ba + bv[width<=800][height<=800]'
+                   '/   best[width<=800][height<=800]'
+                   )
 
-options = {'format_sort': ['codec:h265:h264:h263'],
+options = {'format_sort': ['codec:h265:h264:h263,acodec:aac:opus:mp3,ext:m4a'],
            'max_filesize': 52428800,  # 50 MB - Telegram's limit for bots; abort if larger
            'subtitleslangs': ['en'],
            'writesubtitles': True,
