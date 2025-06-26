@@ -9,32 +9,39 @@ TOKEN=""  # Get it from BotFather t.me/BotFather
 #TEMPDIR="/tmp/ytdlp-telebot"      # Temporary path to download videos into
 #REGEX='\bhttps?://\S*\b'          # Regex to identify possible links
 #PROXY="192.168.0.1:8888"          # Proxy for yt-dlp to download through
-#PROXY2="socks5://127.0.0.1:987"   # For SOCKS5, specify it like this
+#PROXY="socks5://127.0.0.1:987"    # For SOCKS5, specify it like this
 
 # Hack against YouTube forcing SABR
-EXTRA_ARGS='{"extractor_args": {"youtube": {"player-client": ["mweb"]}}}'
+#EXTRA_ARGS='{"extractor_args": {"youtube": {"player-client": ["mweb"]}}}'
 #["default", "tv", "tv_embedded", "ios", "web", "mweb"]
 # If it doesn't work, try getting a POT: see https://github.com/yt-dlp/yt-dlp/issues/12482#issuecomment-2838640409
 
 # - Separate video+audio, up to 1280x720 or vertical 720x1280
 # - Single file, same resolution
 # - Anything that's available of lower resolution
-# - And all the same things in case the site does not expose sizes properly
-#FORMATS="
-# ba + bv[width>=800][height<=800][filesize<50M]
-#/ba + bv[width<=800][height>=800][filesize<50M]
-#/   best[width>=800][height<=800][filesize<50M]
-#/   best[width<=800][height>=800][filesize<50M]
-#
-#/ba + bv[width<=800][height<=800][filesize<50M]
-#/   best[width<=800][height<=800][filesize<50M]
-#
-#/ba + bv[width>=800][height<=800]
-#/ba + bv[width<=800][height>=800]
-#/   best[width>=800][height<=800]
-#/   best[width<=800][height>=800]
-#
-#/ba + bv[width<=800][height<=800]
-#/   best[width<=800][height<=800]
-#"
+# - Prefer m4a, otherwise it likes to get mp4 which is often "Forbidden"
+FORMATS="
+ (ba[ext=m4a] / ba)
+    + bv[width>=800][height<=800][filesize<50M]
+/(ba[ext=m4a] / ba)
+    + bv[width<=800][height>=800][filesize<50M]
+/   best[width>=800][height<=800][filesize<50M]
+/   best[width<=800][height>=800][filesize<50M]
 
+/(ba[ext=m4a] / ba)'
+    + bv[width<=800][height<=800][filesize<50M]
+/   best[width<=800][height<=800][filesize<50M]
+"
+
+# For websites that don't expose file size
+SIZELESS_FORMATS="
+ (ba[ext=m4a] / ba)
+    + bv[width>=800][height<=800]
+/(ba[ext=m4a] / ba)
+    + bv[width<=800][height>=800]
+/   best[width>=800][height<=800]
+/   best[width<=800][height>=800]
+
+/ba + bv[width<=800][height<=800]
+/   best[width<=800][height<=800]
+"

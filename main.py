@@ -32,18 +32,20 @@ default_formats = (
                    '    + bv[width<=800][height>=800][filesize<50M]'
                    '/   best[width>=800][height<=800][filesize<50M]'
                    '/   best[width<=800][height>=800][filesize<50M]'
-                    
+
                    '/(ba[ext=m4a] / ba)'
                    '    + bv[width<=800][height<=800][filesize<50M]'
                    '/   best[width<=800][height<=800][filesize<50M]'
-                    
-                   '/(ba[ext=m4a] / ba)'
-                   '    + bv[width>=800][height<=800]'  # For websites that don't expose file size
+                   )
+# For websites that don't expose file size
+default_sizeless_formats = (
+                   ' (ba[ext=m4a] / ba)'
+                   '    + bv[width>=800][height<=800]'
                    '/(ba[ext=m4a] / ba)'
                    '    + bv[width<=800][height>=800]'
                    '/   best[width>=800][height<=800]'
                    '/   best[width<=800][height>=800]'
-                    
+
                    '/ba + bv[width<=800][height<=800]'
                    '/   best[width<=800][height<=800]'
                    )
@@ -74,6 +76,7 @@ if proxy:
     options.update({'proxy': proxy})
 
 formats = os.environ.get('FORMATS', default_formats)
+sizeless_formats = os.environ.get('SIZELESS_FORMATS', default_sizeless_formats)
 options.update({'format': formats})
 
 extra_args = os.environ.get('EXTRA_ARGS')
@@ -92,6 +95,16 @@ try:
 except Exception as err:
     logger.error(f"Failed to register the bot!\n{err}")
     exit(1)
+
+
+# We no longer need this because we get 'info' with the first request!
+# def get_formats(url):
+#     try:
+#         with YoutubeDL(dict(options, extract_flat=False, listformats=True)) as ydl:
+#             info = ydl.sanitize_info(ydl.extract_info(url, download=False))
+#     except utils.DownloadError:
+#         return None
+#     return info
 
 
 def extract_formats(info):
@@ -155,15 +168,22 @@ def render_formats(result):
         codecs = f"{r['video'] or '---'}:{r['audio'] or '---'}"
 
         display += f"{resolution:14} {bitrate:9} {size:>8} {codecs}\n"
-    print("Formats available:\n", display)  # This line is added after markup
+    print(f"Formats available:\n{display}")
     return display
 
 
-def notify(original_message, error, url=None, extra=None):
-    logger.info(f"-- Sending a notification for {url}: {error}")
-    message = str(error)
-    if DEBUG and isinstance(error, utils.DownloadError):  # Then it has .exc_info[1] !
-        message += f'\n\n{type(error.exc_info[1])}'
+def send_error_message(original_message, error, url=None, extra=None):
+    if isinstance(error, utils.DownloadError):  # It might be just a string!
+        error_message = str(error.exc_info[1])
+        error_type = str(error.exc_info[0])
+    else:
+        error_message = error
+        error_type = None
+    logger.info(f"-- Sending a notification for {url}: {error_message} ({error_type})")
+
+    message = error_message
+    if error_type:
+        message += f'\n\n{error_type}'
     if extra:
         message += f'\n\n{extra}'
     if url:
@@ -198,69 +218,93 @@ def check_message(message):
     for index, url in enumerate(matches):
         logger.info(f"-- Downloading video {index+1} of {len(matches)}")
         filename = f"{message.chat.id}-{message.id}-{index+1}.%(ext)s"  # This filename will be unique
+        info = None  # We don't want it to be uninitialized!
 
+        # === First download attempt ===
+
+        # Quick check if this is a playlist - we don't want to accidentally download it
+        # If we download a playlist non-flatly, it will throw errors about deleted videos!
+        # We want the playlist to successfully abort, so it must not go into the "except:" territory!
+        # With 'listformats', this will not fail due to "Requested format not available", so we will get 'info'!
         try:
-            # Quick check if this is a playlist - we don't want to accidentally download it
-            # If we download a playlist non-flatly, it will throw errors about deleted videos!
-            # We want the playlist to successfully abort, so it must not go into the "except:" territory!
             logger.info('-- Checking if this is a playlist')
-            with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True)) as ydl:
+            with YoutubeDL(dict(options, outtmpl=filename, extract_flat=True, listformats=True)) as ydl:
                 info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-            # It is possible that we get "Requested format not available" right here! (Not for a playlist!)
-            # Then we fall into "except:", and 'info' is still unassigned!
+            logger.info("-- Made it through the first request and got 'info'!")
+
             if info.get('entries') or (info.get('_type') == "playlist"):
-                continue  # If this is a playlist, abort quietly
+                logger.info(f'-- This is a playlist - skipping')
+                continue  # This is a playlist - abort quietly
 
             logger.info('-- Attempting to download the video')
-            try:
-                with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
-                    info = ydl.sanitize_info(ydl.extract_info(url, download=True))
-            except utils.DownloadError:  # Discard the first error, we don't need it
-                # Try again, optionally with a different proxy
-                proxy2 = os.environ.get('PROXY2', None)
-                with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, proxy=proxy2)) as ydl:
-                    info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False)) as ydl:
+                info = ydl.sanitize_info(ydl.extract_info(url, download=True))
 
-        except utils.DownloadError as error:  # Note that you can't handle errors "normally" in yt-dlp!
+        except utils.DownloadError as error:
+            # Note the dumbness: DownloadError is an ENVELOPE for any other exception!
+            # - error: DownloadError
+            # - error.exc_info[0]: type of the actual error (e.g. ExtractorError)
+            # - error.exc_info[1]: the error itself (e.g. ExtractorError)
+            # - Both str(error) and str(error.exc_info[1]) show the same error message!
             # Check for UnsupportedError first, because it is also an ExtractorError!
             if isinstance(error.exc_info[1], utils.UnsupportedError):
+                logger.info(f'-- Not a video ({error.exc_info[0]})')
                 # This is not a video - just move on to the next link
                 continue
-            # Check this with "elif", or continue, because otherwise both will match!
-            elif isinstance(error.exc_info[1], utils.ExtractorError):
-                # !! NOTE that 'info' might still be unassigned!
+
+            logger.info(f'-- Failed: {error.exc_info[1]} ({error.exc_info[0]}) - trying again')
+            more_options = {}
+            # Errors in yt-dlp are HORSE SHIT - just check their messages, don't even try their types!
+            # if isinstance(error.exc_info[1], utils.GeoRestrictedError) or "IP address" in str(error.exc_info[1]):
+            #     logger.info(f'-- GeoRestrictedError: try the backup proxy')
+            #     more_options.update({'proxy': proxy2})
+            if "Requested format is not available" in str(error.exc_info[1]):
+                logger.info('-- Requested format is not available')
+                # See if any formats expose their size
+                if info:  # If we failed to get 'info', then the issue is not about formats!
+                    if not any(i.get('filesize') for i in info.get('formats')):
+                        logger.info('-- This website does not expose sizes; try with sizeless formats')
+                        more_options.update({'format': sizeless_formats})
+                    else:
+                        logger.info('-- The video is indeed too large')
+
+            # === Second download attempt ===
+
+            # Try again on any error - optionally with new options
+            try:
+                with YoutubeDL(dict(options, **more_options, outtmpl=filename, extract_flat=False)) as ydl:
+                    info = ydl.sanitize_info(ydl.extract_info(url, download=True))
+            except utils.DownloadError as error:
                 # We'd like to see what formats are available
-                logger.info('-- Download failed: extract formats for the error message')
-                try:
-                    with YoutubeDL(dict(options, outtmpl=filename, extract_flat=False, listformats=True)) as ydl:
-                        info = ydl.sanitize_info(ydl.extract_info(url, download=False))
-                except utils.DownloadError:  # as new_error:  # We don't need this error - it's about extracting formats
-                    # notify(message, error, url, "Formats available: FAILED to extract! (see the error below)")
-                    # Do not send the error about format extraction - that's too much spam
-                    notify(message, error, url, "Formats available: FAILED to extract!")
-                    # notify(message, new_error, url, "This happened while trying to extract available formats")
+                logger.info('-- Second download attempt failed')
+                # It's an ExtractorError when "only extracting", but DownloadError when downloading!
+                if "Requested format is not available" in str(error.exc_info[1]):
+                    logger.info('-- Requested format is not available; extracting formats for the error message')
+                    if not info:
+                        send_error_message(message, error, url, "Formats available: FAILED to extract!")
+                        continue
+                    else:
+                        send_error_message(message, error, url)
+                        rendered_formats = render_formats(extract_formats(info.get('formats')))
+                        rendered_formats = f"Formats available:\n<pre>{rendered_formats}</pre>"
+                        # Send a separate message with formats
+                        bot.send_message(message.chat.id, rendered_formats, parse_mode='HTML')
+                        continue
+                else:
+                    send_error_message(message, error, url)
                     continue
 
-                # Parse 'info' and present it (now it's definitely assigned!)
-                # notify(message, error, url, f"{render_formats(extract_formats(info.get('formats')))}")
-                notify(message, error, url)
-                # Escape existing message, then apply markup on top of it
-                rendered_formats = render_formats(extract_formats(info.get('formats')))
-                rendered_formats = f"Formats available:\n<pre>{rendered_formats}</pre>"
-                bot.send_message(message.chat.id, rendered_formats, parse_mode='HTML')
-                continue
-            notify(message, error, url)
-            continue
+        # === Send the video ===
 
         # Get the actual filename that was created (with whatever extension it was assigned)
         filenames = info.get('requested_downloads')  # There's a list
         if len(filenames) != 1:
-            notify(message, f"WARNING: Got {len(filenames)} downloaded files for some reason!", url)
+            send_error_message(message, f"WARNING: Got {len(filenames)} downloaded files for some reason!", url)
         filename = filenames[0].get('filepath')
 
         # Check that we're going to delete a normal file
         if not os.path.isfile(filename):
-            notify(message, f"WARNING: File not found: {filename}", url)
+            send_error_message(message, f"WARNING: File not found: {filename}", url)
 
         # Compose and post the message
         with open(filename, 'rb') as file:
@@ -284,7 +328,7 @@ def check_message(message):
                 one_video_sent = True
 
             except Exception as error:
-                notify(message, error, url)
+                send_error_message(message, error, url)
 
         os.remove(filename)
 
@@ -292,7 +336,7 @@ def check_message(message):
         try:
             bot.delete_message(message.chat.id, message.id)
         except Exception as error:
-            notify(message, error)
+            send_error_message(message, error)
 
 
 def stop(sig, _):
