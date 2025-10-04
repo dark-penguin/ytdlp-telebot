@@ -64,7 +64,3 @@ if you have any kind of attachment, then it's not just a meme you want to pre-do
 for convenience, and any links are probably not the main focus of the message.
 You can always repost the links in separate messages if you want. Trying to repost
 and delete the priginal message is likely not a very good idea in this case.
-- When reposting the contents of the original message, it is not possible
-(at least according to my research) to preserve its formatting. So, the formatting
-will be lost, and the message still deleted, because there is no way to even know
-if there was any formatting. This is not much of a problem though.
