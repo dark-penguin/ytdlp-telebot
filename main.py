@@ -177,7 +177,7 @@ def send_error_message(original_message, error, url=None, extra=None):
         error_message = str(error.exc_info[1])
         error_type = str(error.exc_info[0])
     else:
-        error_message = error
+        error_message = str(error)
         error_type = None
     logger.info(f"-- Sending a notification for {url}: {error_message} ({error_type})")
 
