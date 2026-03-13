@@ -1,17 +1,20 @@
+#   Install PER-USER with:
+# systemctl --user link ytdlp.service
+# systemctl --user enable --now myservice.service
+
+
 [Unit]
 Description=ytdlp-telebot
-Requires=docker.service
-After=docker.service
+After=network-online.target
 
 
 [Service]
 Type=simple
 Restart=on-failure
 
-ExecStart=/usr/bin/docker run -t --rm --network host --name ytdlp ytdlp
-ExecStop=/usr/bin/docker stop ytdlp
-ExecStopPost=/bin/bash -c 'while true; do [ -z "$(docker ps -a | awk "{print \$NF;}" | tail -n +2 | grep "^ytdlp$")" ] && break; sleep 1; done'
+WorkingDirectory=%h/ytdlp-telebot
+ExecStart=/usr/bin/python3 %h/ytdlp-telebot/main.py
 
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target
