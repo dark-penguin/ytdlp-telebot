@@ -4,6 +4,8 @@
 #
 #   If you want to see logs, make sure you have permissions for them:
 # sudo usermod -aG systemd-journal $USER
+#   Then see user logs:
+# journalctl -t ytdlp
 
 
 [Unit]
@@ -14,6 +16,7 @@ After=network-online.target
 [Service]
 Type=simple
 Restart=on-failure
+SyslogIdentifier=ytdlp
 
 WorkingDirectory=%h/ytdlp-telebot
 ExecStart=/usr/bin/python3 %h/ytdlp-telebot/main.py
