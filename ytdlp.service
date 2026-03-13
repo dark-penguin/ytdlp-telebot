@@ -1,6 +1,9 @@
 #   Install PER-USER with:
-# systemctl --user link ytdlp.service
-# systemctl --user enable --now myservice.service
+# systemctl --user link ./ytdlp.service
+# systemctl --user enable --now ytdlp
+#
+#   If you want to see logs, make sure you have permissions for them:
+# sudo usermod -aG systemd-journal $USER
 
 
 [Unit]
