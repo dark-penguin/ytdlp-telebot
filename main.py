@@ -25,6 +25,11 @@ if not token:
 regex = os.environ.get('REGEX', r'\bhttps?://\S*\b')
 tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-telebot')
 
+# Find the path to Node for the JS challenge solver
+NODE_PATH = (max(Path.home().glob(".nvm/versions/node/v*/bin/node"),
+                 key=lambda p: tuple(map(int, p.parts[-3][1:].split("."))),))
+logger.info(f"Detected Node.js path: '{NODE_PATH}'")
+
 default_formats = (
                    ' (ba[ext=m4a] / ba)'  # Prefer m4a, otherwise it likes to get mp4 which is often "Forbidden"
                    '    + bv[width>=800][height<=800][filesize<50M]'
@@ -61,7 +66,7 @@ options = {'format_sort': ['codec:h265:h264:h263,acodec:aac:opus:mp3,ext:m4a'],
            'concurrent_fragment_downloads': 10,
            'retries': 10,
            'fragment_retries': 10,
-
+           'js_runtimes': { "node": { "path": NODE_PATH } },
            'skip_unavailable_fragments': False,  # Abort on fragment failures - to catch SABR errors
 
            'postprocessors': [{'key': 'FFmpegEmbedSubtitle',  # Subs: do not embed if subs already present?
