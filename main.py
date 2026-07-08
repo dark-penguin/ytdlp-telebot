@@ -4,6 +4,9 @@ import sys
 import re
 import signal
 import logging
+from copy import deepcopy
+from pathlib import Path
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 import telebot
@@ -55,7 +58,7 @@ default_sizeless_formats = (
                    '/   best[width<=800][height<=800]'
                    )
 
-options = {'format_sort': ['codec:h265:h264:h263,acodec:aac:opus:mp3,ext:m4a'],
+default_options = {'format_sort': ['codec:h265:h264:h263,acodec:aac:opus:mp3,ext:m4a'],
            'max_filesize': 52428800,  # 50 MB - Telegram's limit for bots; abort if larger
            'subtitleslangs': ['en'],
            'writesubtitles': True,
@@ -78,16 +81,16 @@ options = {'format_sort': ['codec:h265:h264:h263,acodec:aac:opus:mp3,ext:m4a'],
 
 proxy = os.environ.get('PROXY', None)
 if proxy:
-    options.update({'proxy': proxy})
+    default_options.update({'proxy': proxy})
 
 formats = os.environ.get('FORMATS', default_formats)
 sizeless_formats = os.environ.get('SIZELESS_FORMATS', default_sizeless_formats)
-options.update({'format': formats})
+default_options.update({'format': formats})
 
 extra_args = os.environ.get('EXTRA_ARGS')
 if extra_args:
     extra_args = json.loads(extra_args)
-    options.update(extra_args)
+    default_options.update(extra_args)
 
 logger.info(f"TEMPDIR: {tempdir}")
 logger.info(f"REGEX: {regex}")
@@ -224,6 +227,13 @@ def check_message(message):
         logger.info(f"-- Downloading video {index+1} of {len(matches)}")
         filename = f"{message.chat.id}-{message.id}-{index+1}.%(ext)s"  # This filename will be unique
         info = None  # We don't want it to be uninitialized!
+        options = deepcopy(default_options)  # To be able to mutate it (quirks) without affecting the global one!
+
+        # Apply quirks
+        base_url = urlparse(url).hostname  # [www.]tiktok.com
+        # Tiktok: H.265 advertises audio but is served without it - use H.264 instead!
+        if base_url in {"tiktok.com"} or base_url.endswith(".tiktok.com"):  # 'tiktok.com' or '*.tiktok.com'
+            options.update({'format_sort': ['codec:h264,acodec:aac,ext:m4a']})
 
         # === First download attempt ===
 
