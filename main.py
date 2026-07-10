@@ -30,7 +30,7 @@ tempdir = os.environ.get('TEMPDIR', '/tmp/ytdlp-telebot')
 
 # Find the path to Node for the JS challenge solver
 NODE_PATH = (max(Path.home().glob(".nvm/versions/node/v*/bin/node"),
-                 key=lambda p: tuple(map(int, p.parts[-3][1:].split("."))),))
+                 key=lambda p: tuple(map(int, p.parts[-3][1:].split("."))),)).as_posix()
 logger.info(f"Detected Node.js path: '{NODE_PATH}'")
 
 default_formats = (
